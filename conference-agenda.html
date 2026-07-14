@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Conference Agenda" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="agenda-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="agenda-icon.svg" />
+  <title>Lightweight Conference Agenda</title>
+  <style>
+    :root{--bg:#f6f7f9;--panel:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#0f766e;--danger:#dc2626;--shadow:0 8px 30px rgba(15,23,42,.08);--radius:16px;--hour-width:78px;--row-height:86px}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    .app{max-width:1500px;margin:0 auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .brand h1{font-size:26px;margin:0 0 4px}.brand p{margin:0;color:var(--muted);font-size:14px}
+    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;background:#fff;color:var(--text);box-shadow:0 1px 0 rgba(15,23,42,.04)}
+    .btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.ghost{background:transparent}.btn.danger{color:var(--danger)}
+    .toolbar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow);margin-bottom:16px}
+    .segmented{display:inline-flex;background:#f1f5f9;border-radius:10px;padding:4px;gap:4px}.segmented button{border:0;background:transparent;padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}.segmented button.active{background:#fff;color:var(--text);box-shadow:0 1px 5px rgba(15,23,42,.08)}
+    .field{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;color:var(--text)}
+    .notice{display:none;margin-bottom:14px;padding:12px 14px;border-radius:12px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}.notice.show{display:block}
+    .schedule-shell{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}.schedule-scroll{overflow:auto;position:relative}.schedule{width:100%;min-width:1050px;position:relative}
+    .time-header{display:grid;grid-template-columns:150px repeat(16,minmax(0,1fr));position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+    .time-header .corner{position:sticky;left:0;z-index:22;background:#fff;border-right:1px solid var(--line);padding:16px;font-weight:600}.time-label{padding:16px 0;text-align:left;color:var(--muted);font-size:13px;border-right:1px dashed var(--line)}
+    .row{display:grid;grid-template-columns:150px minmax(0,1fr);min-height:var(--row-height);border-bottom:1px solid var(--line);position:relative}.row:last-child{border-bottom:0}
+    .row-label{position:sticky;left:0;z-index:15;background:#fff;border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:4px}.row-label strong{font-size:14px}.row-label span{font-size:12px;color:var(--muted)}
+    .timeline{position:relative;background-image:linear-gradient(to right,transparent calc(100% - 1px),var(--line) calc(100% - 1px));background-size:calc(100% / 16) 100%;min-height:var(--row-height)}
+    .session{position:absolute;top:12px;height:60px;border-radius:10px;padding:9px 8px;color:#0f172a;cursor:pointer;overflow:hidden;border:1px solid rgba(15,23,42,.08);box-shadow:0 4px 14px rgba(15,23,42,.08);transition:.15s ease}.session:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.12)}.session.selected{outline:3px solid rgba(15,118,110,.28)}.session.conflict{outline:3px solid rgba(220,38,38,.26)}
+    .session .title{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.session .meta{font-size:11px;color:#475569;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .type-talk{background:#dbeafe}.type-keynote{background:#fef3c7}.type-break{background:#dcfce7}.type-panel{background:#f3e8ff}.type-workshop{background:#ffe4e6}
+    .empty{padding:48px;text-align:center;color:var(--muted);display:none}.empty.show{display:block}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.46);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}.modal-backdrop.show{display:flex}.modal{width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:22px}.modal h2{margin:0 0 6px}.modal .sub{color:var(--muted);font-size:14px;margin-bottom:18px}.modal .details{display:grid;grid-template-columns:110px 1fr;gap:10px 14px;font-size:14px;padding:14px;background:#f8fafc;border-radius:12px}.modal .details .k{color:var(--muted)}.modal .desc{line-height:1.65;margin:16px 0;color:#374151}.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+    .admin-panel{display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}.admin-panel.show{display:block}.form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.form-grid .wide{grid-column:span 2}.form-grid label,.form-field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}textarea{border:1px solid var(--line);border-radius:10px;padding:10px;min-height:90px;resize:vertical}.admin-actions{display:flex;justify-content:flex-end;margin-top:12px}.room-manager{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}.room-manager h3{margin:0 0 10px}.room-entry{display:flex;gap:8px;max-width:440px}.room-entry input{flex:1}.room-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.room-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 9px 7px 12px;border:1px solid var(--line);border-radius:999px;background:#f8fafc;font-size:13px}.room-chip button{border:0;background:transparent;color:var(--danger);cursor:pointer;padding:0 3px;font-size:16px;line-height:1}.date-picker{position:relative}.date-picker input{width:100%;cursor:pointer}.calendar-popover{display:none;position:absolute;top:calc(100% + 6px);left:0;width:292px;padding:12px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 36px rgba(15,23,42,.18);z-index:80;color:var(--text)}.calendar-popover.show{display:block}.calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.calendar-head strong{font-size:14px}.calendar-nav{border:0;background:#f1f5f9;border-radius:7px;width:30px;height:30px;cursor:pointer}.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.calendar-weekday{text-align:center;color:var(--muted);font-size:11px;font-weight:700;padding:4px 0}.calendar-day{border:0;background:transparent;border-radius:7px;height:32px;cursor:pointer;color:var(--text);font-size:12px}.calendar-day:hover{background:#ecfdf5}.calendar-day.outside{color:#cbd5e1}.calendar-day.selected{background:var(--accent);color:#fff}
+    @media(max-width:800px){
+      .app{padding:12px}.topbar{align-items:stretch;flex-direction:column}.brand h1{font-size:22px}.top-actions,.top-actions .btn{width:100%}
+      .toolbar{align-items:stretch;gap:10px}.segmented{display:grid;grid-template-columns:1fr 1fr;width:100%}.field{display:grid;grid-template-columns:62px minmax(0,1fr);width:100%}.field input,.field select{width:100%;min-width:0}
+      .admin-panel{padding:14px}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:span 1}.room-entry{max-width:none}.room-entry input{min-width:0}
+      .schedule-scroll{-webkit-overflow-scrolling:touch;scrollbar-width:thin}.schedule{min-width:900px}.time-header{grid-template-columns:120px repeat(16,minmax(0,1fr))}.row{grid-template-columns:120px minmax(0,1fr)}.time-header .corner,.row-label{padding:12px}.row-label strong{font-size:12px}.time-label{font-size:11px;padding:13px 0}
+      .modal-backdrop{padding:10px}.modal{padding:16px;max-height:calc(100vh - 20px);overflow:auto}.modal .details{grid-template-columns:78px 1fr}.modal-actions{flex-wrap:wrap}.modal-actions .btn{flex:1 1 auto}
+    }
+    @media(max-width:420px){.brand p{font-size:12px}.room-entry{display:grid;grid-template-columns:1fr auto}.calendar-popover{position:fixed;left:12px;right:12px;top:50%;width:auto;transform:translateY(-50%)}.session .meta{display:none}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><h1>Conference Agenda</h1><p>A lightweight schedule · Click a session card to add it to My Agenda</p></div>
+    <div class="top-actions"><button class="btn primary" id="installApp" hidden>Install App</button><button class="btn" id="adminToggle">Organizer Mode</button></div>
+  </div>
+  <div class="admin-panel" id="adminPanel">
+    <h3 style="margin-top:0">Add Session</h3>
+    <div class="form-grid">
+      <label>Title<input id="fTitle" placeholder="e.g. Topic"></label>
+      <label>Speaker<input id="fSpeaker" placeholder="e.g. Your name"></label>
+      <div class="form-field"><span>Date</span><div class="date-picker" id="datePicker"><input id="fDate" type="text" value="2026-09-17" readonly aria-label="Session date"><div class="calendar-popover" id="calendarPopover"><div class="calendar-head"><button class="calendar-nav" id="calendarPrev" type="button" aria-label="Previous month">‹</button><strong id="calendarTitle"></strong><button class="calendar-nav" id="calendarNext" type="button" aria-label="Next month">›</button></div><div class="calendar-grid" id="calendarGrid"></div></div></div></div><label>Room<select id="fRoom"></select></label>
+      <label>Start Time<input id="fStart" type="time" value="09:00"></label><label>End Time<input id="fEnd" type="time" value="09:30"></label>
+      <label>Type<select id="fType"><option value="talk">Talk</option><option value="keynote">Keynote</option><option value="panel">Panel</option><option value="workshop">Workshop</option><option value="break">Break</option></select></label>
+      <label class="wide">Description<textarea id="fDesc" placeholder="Session description"></textarea></label>
+    </div>
+    <div class="admin-actions"><button class="btn primary" id="addSession">Add to Agenda</button></div>
+    <div class="room-manager"><h3>Manage Rooms</h3><div class="room-entry"><input id="newRoom" placeholder="Enter a new room name"><button class="btn" id="addRoom">Add Room</button></div><div class="room-list" id="roomList"></div></div>
+  </div>
+  <div class="toolbar">
+    <div class="segmented"><button class="active" data-view="all">All Sessions</button><button data-view="mine">My Agenda</button></div>
+    <div class="field">Date <select id="dateFilter"><option value="all">All Dates</option></select></div>
+    <div class="field">Room <select id="roomFilter"><option value="all">All Rooms</option></select></div>
+    <div class="field">Search <input id="searchBox" placeholder="Title or speaker"></div>
+  </div>
+  <div class="notice" id="conflictNotice"></div>
+  <div class="schedule-shell"><div class="schedule-scroll"><div class="schedule" id="schedule"></div></div><div class="empty" id="emptyState">No sessions match the current filters.</div></div>
+</div>
+<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h2 id="mTitle"></h2><div class="sub" id="mSub"></div><div class="details"><div class="k">Date</div><div id="mDate"></div><div class="k">Time</div><div id="mTime"></div><div class="k">Room</div><div id="mRoom"></div><div class="k">Speaker</div><div id="mSpeaker"></div></div><div class="desc" id="mDesc"></div><div class="modal-actions"><button class="btn danger" id="deleteSession" hidden>Delete Session</button><button class="btn" id="closeModal">Close</button><button class="btn primary" id="toggleMine"></button></div></div></div>
+<script>
+const START_HOUR=8, END_HOUR=24;
+let rooms=JSON.parse(localStorage.getItem("agenda_rooms_en")||"null")||["Main Hall","Room A","Room B"];
+const seedSessions=[
+  {id:"s1",title:"Opening Remarks",speaker:"Conference Chair",date:"2026-09-17",room:"Main Hall",start:"09:00",end:"09:20",type:"keynote",desc:"Welcome remarks and an introduction to the conference program."},
+  {id:"s2",title:"Keynote Presentation",speaker:"Keynote Speaker",date:"2026-09-17",room:"Main Hall",start:"09:30",end:"10:15",type:"keynote",desc:"An example keynote presentation for the conference program."},
+  {id:"s3",title:"Sample Research Topic",speaker:"Speaker A",date:"2026-09-17",room:"Room A",start:"10:30",end:"11:00",type:"talk",desc:"A general example description for a research presentation."},
+  {id:"s4",title:"Sample Technical Talk",speaker:"Speaker B",date:"2026-09-17",room:"Room B",start:"10:30",end:"11:10",type:"talk",desc:"A general example description for a technical presentation."},
+  {id:"s5",title:"Coffee Break",speaker:"",date:"2026-09-17",room:"Main Hall",start:"11:15",end:"11:45",type:"break",desc:"Refreshments and informal networking."},
+  {id:"s6",title:"Panel: Data-Limited AI",speaker:"Panelists",date:"2026-09-17",room:"Main Hall",start:"14:00",end:"15:00",type:"panel",desc:"Machine-learning and neural-network methods under limited-data conditions."},
+  {id:"s7",title:"Sample Workshop",speaker:"Workshop Host",date:"2026-09-18",room:"Room A",start:"09:00",end:"10:30",type:"workshop",desc:"A general example description for an interactive workshop."},
+  {id:"s8",title:"Guest Presentation",speaker:"Guest Speaker",date:"2026-09-18",room:"Room B",start:"10:45",end:"11:25",type:"talk",desc:"A general example description for a guest presentation."},
+  {id:"s9",title:"Closing Discussion",speaker:"All Participants",date:"2026-09-18",room:"Main Hall",start:"15:00",end:"16:00",type:"panel",desc:"Conference summary, open discussion, and opportunities for future collaboration."}
+];
+let sessions=JSON.parse(localStorage.getItem("agenda_sessions_en_v2")||"null")||seedSessions;
+let myAgenda=new Set(JSON.parse(localStorage.getItem("my_agenda_en")||"[]"));
+let currentView="all", activeSession=null, organizerMode=false;
+const $=id=>document.getElementById(id);
+let installPrompt=null;
+let calendarView=new Date(2026,8,1);
+function dateId(date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`}
+function renderCalendar(){const grid=$("calendarGrid"),selected=$("fDate").value;$("calendarTitle").textContent=new Intl.DateTimeFormat("en",{month:"long",year:"numeric"}).format(calendarView);grid.replaceChildren();["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(day=>{const el=document.createElement("div");el.className="calendar-weekday";el.textContent=day;grid.appendChild(el)});const first=new Date(calendarView.getFullYear(),calendarView.getMonth(),1),start=new Date(first);start.setDate(1-first.getDay());for(let i=0;i<42;i++){const date=new Date(start);date.setDate(start.getDate()+i);const button=document.createElement("button"),id=dateId(date);button.type="button";button.className="calendar-day"+(date.getMonth()!==calendarView.getMonth()?" outside":"")+(id===selected?" selected":"");button.textContent=date.getDate();button.setAttribute("aria-label",new Intl.DateTimeFormat("en",{year:"numeric",month:"long",day:"numeric"}).format(date));button.addEventListener("click",()=>{$("fDate").value=id;calendarView=new Date(date.getFullYear(),date.getMonth(),1);$("calendarPopover").classList.remove("show");renderCalendar()});grid.appendChild(button)}}
+function openCalendar(){const selected=new Date($("fDate").value+"T00:00:00");if(!Number.isNaN(selected.getTime()))calendarView=new Date(selected.getFullYear(),selected.getMonth(),1);renderCalendar();$("calendarPopover").classList.toggle("show")}
+function changeCalendarMonth(amount){calendarView=new Date(calendarView.getFullYear(),calendarView.getMonth()+amount,1);renderCalendar()}
+function save(){localStorage.setItem("agenda_sessions_en_v2",JSON.stringify(sessions));localStorage.setItem("my_agenda_en",JSON.stringify([...myAgenda]));localStorage.setItem("agenda_rooms_en",JSON.stringify(rooms))}
+function mins(t){const [h,m]=t.split(":").map(Number);return h*60+m}
+function fmtDate(id){const date=new Date(id+"T00:00:00");return Number.isNaN(date.getTime())?id:new Intl.DateTimeFormat("en",{year:"numeric",month:"short",day:"numeric",weekday:"long"}).format(date)}
+function agendaDates(){return [...new Set(sessions.map(s=>s.date))].sort().map(id=>({id,label:fmtDate(id)}))}
+function overlaps(a,b){return a.date===b.date&&mins(a.start)<mins(b.end)&&mins(b.start)<mins(a.end)}
+function selectedConflicts(){const arr=sessions.filter(s=>myAgenda.has(s.id)),conflicts=[];for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++)if(overlaps(arr[i],arr[j]))conflicts.push([arr[i],arr[j]]);return conflicts}
+function populateFilters(){
+  const dates=agendaDates(),currentDate=$("dateFilter").value||"all",currentRoom=$("roomFilter").value||"all",currentFormRoom=$("fRoom").value;
+  $("dateFilter").innerHTML='<option value="all">All Dates</option>'+dates.map(d=>`<option value="${d.id}">${d.label}</option>`).join("");
+  $("roomFilter").innerHTML='<option value="all">All Rooms</option>'+rooms.map(r=>`<option>${r}</option>`).join("");
+  $("fRoom").innerHTML=rooms.map(r=>`<option>${r}</option>`).join("");
+  $("dateFilter").value=dates.some(d=>d.id===currentDate)?currentDate:"all";
+  $("roomFilter").value=rooms.includes(currentRoom)?currentRoom:"all";
+  if(rooms.includes(currentFormRoom))$("fRoom").value=currentFormRoom;
+  renderRoomList();
+}
+function renderRoomList(){const list=$("roomList");list.replaceChildren();rooms.forEach(room=>{const chip=document.createElement("span"),name=document.createElement("span"),remove=document.createElement("button");chip.className="room-chip";name.textContent=room;remove.type="button";remove.textContent="×";remove.title=`Delete ${room}`;remove.setAttribute("aria-label",`Delete ${room}`);remove.addEventListener("click",()=>deleteRoom(room));chip.append(name,remove);list.appendChild(chip)})}
+function addRoom(){const input=$("newRoom"),name=input.value.trim();if(!name){alert("Please enter a room name.");return}if(rooms.some(room=>room.toLowerCase()===name.toLowerCase())){alert("That room already exists.");return}rooms.push(name);input.value="";save();populateFilters();$("fRoom").value=name;render()}
+function deleteRoom(room){if(sessions.some(s=>s.room===room)){alert(`“${room}” cannot be deleted because it still contains sessions.`);return}if(rooms.length===1){alert("At least one room is required.");return}if(!confirm(`Delete room “${room}”?`))return;rooms=rooms.filter(item=>item!==room);save();populateFilters();render()}
+function filteredSessions(){const df=$("dateFilter").value,rf=$("roomFilter").value,q=$("searchBox").value.trim().toLowerCase();return sessions.filter(s=>(currentView!=="mine"||myAgenda.has(s.id))&&(df==="all"||s.date===df)&&(rf==="all"||s.room===rf)&&(!q||(s.title+" "+s.speaker).toLowerCase().includes(q)))}
+function render(){
+  const visible=filteredSessions(),df=$("dateFilter").value,rf=$("roomFilter").value,rows=[],dates=agendaDates();
+  dates.filter(d=>df==="all"||d.id===df).forEach(d=>rooms.filter(r=>rf==="all"||r===rf).forEach(r=>rows.push({date:d.id,room:r,label:d.label})));
+  $("schedule").innerHTML=`<div class="time-header"><div class="corner">Date / Room</div>${Array.from({length:END_HOUR-START_HOUR},(_,i)=>`<div class="time-label">${String(START_HOUR+i).padStart(2,"0")}:00</div>`).join("")}</div>${rows.map(row=>`<div class="row"><div class="row-label"><strong>${row.label}</strong><span>${row.room}</span></div><div class="timeline" data-date="${row.date}" data-room="${row.room}"></div></div>`).join("")}`;
+  const conflicts=selectedConflicts(),conflictIds=new Set(conflicts.flat().map(s=>s.id));
+  visible.forEach(s=>{const tl=[...document.querySelectorAll(".timeline")].find(x=>x.dataset.date===s.date&&x.dataset.room===s.room);if(!tl)return;const hourWidth=tl.clientWidth/(END_HOUR-START_HOUR),el=document.createElement("div");el.className=`session type-${s.type} ${myAgenda.has(s.id)?"selected":""} ${conflictIds.has(s.id)?"conflict":""}`;el.style.left=((mins(s.start)-START_HOUR*60)/60)*hourWidth+"px";el.style.width=Math.max(34,((mins(s.end)-mins(s.start))/60)*hourWidth-4)+"px";const title=document.createElement("div"),meta=document.createElement("div");title.className="title";meta.className="meta";title.textContent=s.title;meta.textContent=`${s.start}–${s.end}${s.speaker?" · "+s.speaker:""}`;el.append(title,meta);el.addEventListener("click",()=>openModal(s.id));tl.appendChild(el)});
+  $("emptyState").classList.toggle("show",visible.length===0);const notice=$("conflictNotice");if(conflicts.length){notice.textContent=`Your agenda has ${conflicts.length} time conflict${conflicts.length===1?"":"s"}: `+conflicts.map(([a,b])=>`${a.title} ↔ ${b.title}`).join("; ");notice.classList.add("show")}else notice.classList.remove("show");
+}
+function openModal(id){activeSession=sessions.find(s=>s.id===id);if(!activeSession)return;$("mTitle").textContent=activeSession.title;$("mSub").textContent=activeSession.type.toUpperCase();$("mDate").textContent=fmtDate(activeSession.date);$("mTime").textContent=`${activeSession.start}–${activeSession.end}`;$("mRoom").textContent=activeSession.room;$("mSpeaker").textContent=activeSession.speaker||"—";$("mDesc").textContent=activeSession.desc||"No description available.";$("toggleMine").textContent=myAgenda.has(id)?"Remove from My Agenda":"Add to My Agenda";$("toggleMine").classList.toggle("danger",myAgenda.has(id));$("deleteSession").hidden=!organizerMode;$("modalBackdrop").classList.add("show")}
+function closeModal(){$("modalBackdrop").classList.remove("show")}
+function toggleMine(){if(!activeSession)return;myAgenda.has(activeSession.id)?myAgenda.delete(activeSession.id):myAgenda.add(activeSession.id);save();closeModal();render()}
+function deleteSession(){if(!activeSession||!organizerMode)return;const title=activeSession.title;if(!confirm(`Delete “${title}”? This action cannot be undone.`))return;sessions=sessions.filter(s=>s.id!==activeSession.id);myAgenda.delete(activeSession.id);activeSession=null;save();closeModal();populateFilters();render()}
+function addSession(){const title=$("fTitle").value.trim(),date=$("fDate").value,start=$("fStart").value,end=$("fEnd").value;if(!title){alert("Please enter a title.");return}if(!date){alert("Please choose a date.");return}if(!start||!end||mins(end)<=mins(start)){alert("The end time must be later than the start time.");return}if(mins(start)<START_HOUR*60||mins(end)>END_HOUR*60){alert(`Sessions must be between ${START_HOUR}:00 and ${END_HOUR}:00.`);return}sessions.push({id:"s"+Date.now(),title,speaker:$("fSpeaker").value.trim(),date,room:$("fRoom").value,start,end,type:$("fType").value,desc:$("fDesc").value.trim()});save();populateFilters();render();["fTitle","fSpeaker","fDesc"].forEach(id=>$(id).value="")}
+populateFilters();render();
+document.querySelectorAll(".segmented button").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".segmented button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");currentView=btn.dataset.view;render()}));
+["dateFilter","roomFilter","searchBox"].forEach(id=>$(id).addEventListener(id==="searchBox"?"input":"change",render));
+$("closeModal").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target.id==="modalBackdrop")closeModal()});$("toggleMine").addEventListener("click",toggleMine);$("deleteSession").addEventListener("click",deleteSession);$("addSession").addEventListener("click",addSession);$("addRoom").addEventListener("click",addRoom);$("newRoom").addEventListener("keydown",e=>{if(e.key==="Enter")addRoom()});$("adminToggle").addEventListener("click",()=>{organizerMode=!organizerMode;$("adminPanel").classList.toggle("show",organizerMode);$("adminToggle").textContent=organizerMode?"Exit Organizer Mode":"Organizer Mode"});
+$("fDate").addEventListener("click",openCalendar);$("calendarPrev").addEventListener("click",e=>{e.stopPropagation();changeCalendarMonth(-1)});$("calendarNext").addEventListener("click",e=>{e.stopPropagation();changeCalendarMonth(1)});document.addEventListener("click",e=>{if(!$("datePicker").contains(e.target))$("calendarPopover").classList.remove("show")});
+let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(render,100)});
+window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPrompt=event;$("installApp").hidden=false});
+$("installApp").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installApp").hidden=true});
+window.addEventListener("appinstalled",()=>{$("installApp").hidden=true;installPrompt=null});
+if("serviceWorker" in navigator&&location.protocol!=="file:")window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(error=>console.warn("Service worker registration failed:",error)));
+</script>
+</body>
+</html>
