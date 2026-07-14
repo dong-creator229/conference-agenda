@@ -74,24 +74,15 @@
     <div class="field">Search <input id="searchBox" placeholder="Title or speaker"></div>
   </div>
   <div class="notice" id="conflictNotice"></div>
-  <div class="schedule-shell"><div class="schedule-scroll"><div class="schedule" id="schedule"></div></div><div class="empty" id="emptyState">No sessions match the current filters.</div></div>
+  <div class="schedule-shell"><div class="schedule-scroll"><div class="schedule" id="schedule"></div></div><div class="empty" id="emptyState">No sessions yet. Open Organizer Mode to add your first session.</div></div>
 </div>
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h2 id="mTitle"></h2><div class="sub" id="mSub"></div><div class="details"><div class="k">Date</div><div id="mDate"></div><div class="k">Time</div><div id="mTime"></div><div class="k">Room</div><div id="mRoom"></div><div class="k">Speaker</div><div id="mSpeaker"></div></div><div class="desc" id="mDesc"></div><div class="modal-actions"><button class="btn danger" id="deleteSession" hidden>Delete Session</button><button class="btn" id="closeModal">Close</button><button class="btn primary" id="toggleMine"></button></div></div></div>
 <script>
 const START_HOUR=8, END_HOUR=24;
 let rooms=JSON.parse(localStorage.getItem("agenda_rooms_en")||"null")||["Main Hall","Room A","Room B"];
-const seedSessions=[
-  {id:"s1",title:"Opening Remarks",speaker:"Conference Chair",date:"2026-09-17",room:"Main Hall",start:"09:00",end:"09:20",type:"keynote",desc:"Welcome remarks and an introduction to the conference program."},
-  {id:"s2",title:"Keynote Presentation",speaker:"Keynote Speaker",date:"2026-09-17",room:"Main Hall",start:"09:30",end:"10:15",type:"keynote",desc:"An example keynote presentation for the conference program."},
-  {id:"s3",title:"Sample Research Topic",speaker:"Speaker A",date:"2026-09-17",room:"Room A",start:"10:30",end:"11:00",type:"talk",desc:"A general example description for a research presentation."},
-  {id:"s4",title:"Sample Technical Talk",speaker:"Speaker B",date:"2026-09-17",room:"Room B",start:"10:30",end:"11:10",type:"talk",desc:"A general example description for a technical presentation."},
-  {id:"s5",title:"Coffee Break",speaker:"",date:"2026-09-17",room:"Main Hall",start:"11:15",end:"11:45",type:"break",desc:"Refreshments and informal networking."},
-  {id:"s6",title:"Panel: Data-Limited AI",speaker:"Panelists",date:"2026-09-17",room:"Main Hall",start:"14:00",end:"15:00",type:"panel",desc:"Machine-learning and neural-network methods under limited-data conditions."},
-  {id:"s7",title:"Sample Workshop",speaker:"Workshop Host",date:"2026-09-18",room:"Room A",start:"09:00",end:"10:30",type:"workshop",desc:"A general example description for an interactive workshop."},
-  {id:"s8",title:"Guest Presentation",speaker:"Guest Speaker",date:"2026-09-18",room:"Room B",start:"10:45",end:"11:25",type:"talk",desc:"A general example description for a guest presentation."},
-  {id:"s9",title:"Closing Discussion",speaker:"All Participants",date:"2026-09-18",room:"Main Hall",start:"15:00",end:"16:00",type:"panel",desc:"Conference summary, open discussion, and opportunities for future collaboration."}
-];
-let sessions=JSON.parse(localStorage.getItem("agenda_sessions_en_v2")||"null")||seedSessions;
+const legacyExampleIds=new Set(["s1","s2","s3","s4","s5","s6","s7","s8","s9"]);
+let sessions=(JSON.parse(localStorage.getItem("agenda_sessions_en_v2")||"[]")||[]).filter(session=>!legacyExampleIds.has(session.id));
+localStorage.setItem("agenda_sessions_en_v2",JSON.stringify(sessions));
 let myAgenda=new Set(JSON.parse(localStorage.getItem("my_agenda_en")||"[]"));
 let currentView="all", activeSession=null, organizerMode=false;
 const $=id=>document.getElementById(id);
@@ -129,7 +120,7 @@ function render(){
   $("schedule").innerHTML=`<div class="time-header"><div class="corner">Date / Room</div>${Array.from({length:END_HOUR-START_HOUR},(_,i)=>`<div class="time-label">${String(START_HOUR+i).padStart(2,"0")}:00</div>`).join("")}</div>${rows.map(row=>`<div class="row"><div class="row-label"><strong>${row.label}</strong><span>${row.room}</span></div><div class="timeline" data-date="${row.date}" data-room="${row.room}"></div></div>`).join("")}`;
   const conflicts=selectedConflicts(),conflictIds=new Set(conflicts.flat().map(s=>s.id));
   visible.forEach(s=>{const tl=[...document.querySelectorAll(".timeline")].find(x=>x.dataset.date===s.date&&x.dataset.room===s.room);if(!tl)return;const hourWidth=tl.clientWidth/(END_HOUR-START_HOUR),el=document.createElement("div");el.className=`session type-${s.type} ${myAgenda.has(s.id)?"selected":""} ${conflictIds.has(s.id)?"conflict":""}`;el.style.left=((mins(s.start)-START_HOUR*60)/60)*hourWidth+"px";el.style.width=Math.max(34,((mins(s.end)-mins(s.start))/60)*hourWidth-4)+"px";const title=document.createElement("div"),meta=document.createElement("div");title.className="title";meta.className="meta";title.textContent=s.title;meta.textContent=`${s.start}–${s.end}${s.speaker?" · "+s.speaker:""}`;el.append(title,meta);el.addEventListener("click",()=>openModal(s.id));tl.appendChild(el)});
-  $("emptyState").classList.toggle("show",visible.length===0);const notice=$("conflictNotice");if(conflicts.length){notice.textContent=`Your agenda has ${conflicts.length} time conflict${conflicts.length===1?"":"s"}: `+conflicts.map(([a,b])=>`${a.title} ↔ ${b.title}`).join("; ");notice.classList.add("show")}else notice.classList.remove("show");
+  $("emptyState").textContent=sessions.length?"No sessions match the current filters.":"No sessions yet. Open Organizer Mode to add your first session.";$("emptyState").classList.toggle("show",visible.length===0);const notice=$("conflictNotice");if(conflicts.length){notice.textContent=`Your agenda has ${conflicts.length} time conflict${conflicts.length===1?"":"s"}: `+conflicts.map(([a,b])=>`${a.title} ↔ ${b.title}`).join("; ");notice.classList.add("show")}else notice.classList.remove("show");
 }
 function openModal(id){activeSession=sessions.find(s=>s.id===id);if(!activeSession)return;$("mTitle").textContent=activeSession.title;$("mSub").textContent=activeSession.type.toUpperCase();$("mDate").textContent=fmtDate(activeSession.date);$("mTime").textContent=`${activeSession.start}–${activeSession.end}`;$("mRoom").textContent=activeSession.room;$("mSpeaker").textContent=activeSession.speaker||"—";$("mDesc").textContent=activeSession.desc||"No description available.";$("toggleMine").textContent=myAgenda.has(id)?"Remove from My Agenda":"Add to My Agenda";$("toggleMine").classList.toggle("danger",myAgenda.has(id));$("deleteSession").hidden=!organizerMode;$("modalBackdrop").classList.add("show")}
 function closeModal(){$("modalBackdrop").classList.remove("show")}
